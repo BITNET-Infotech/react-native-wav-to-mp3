@@ -1,0 +1,81 @@
+# Build output
+dist/
+build/
+
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# iOS
+ios/build/
+ios/Pods/
+ios/*.xcworkspace
+ios/*.xcodeproj
+ios/*.pbxproj
+ios/*.plist
+ios/Podfile.lock
+
+# Android
+android/build/
+android/app/build/
+android/.gradle/
+android/local.properties
+android/*.iml
+android/.idea/
+android/gradle/
+android/gradlew
+android/gradlew.bat
+android/captures/
+android/.externalNativeBuild/
+android/.cxx/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*.swn
+.project
+.classpath
+.settings/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Environment and config
+.env
+.env.*
+.env.local
+.env.development
+.env.test
+.env.production
+
+# TypeScript
+*.tsbuildinfo
+
+# Testing
+coverage/
+__tests__/
+*.lcov
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+.tmp/
+
+# Logs
+logs/
+*.log 
+
+# NPM
+.npmrc
