@@ -56,7 +56,11 @@ class WavToMp3Module(reactContext: ReactApplicationContext) :
       
       Log.d(TAG, "Output path: $processedOutputPath")
       
-      val result = nativeConvertWavToMp3(processedInputPath, processedOutputPath)
+      // Get options with defaults
+      val bitrate = options?.getInt("bitrate")
+      val quality = options?.getInt("quality")
+      
+      val result = nativeConvertWavToMp3(processedInputPath, processedOutputPath, bitrate, quality)
       
       // Log output file size after conversion
       val resultFile = File(processedOutputPath)
@@ -75,7 +79,7 @@ class WavToMp3Module(reactContext: ReactApplicationContext) :
     }
   }
 
-  private external fun nativeConvertWavToMp3(inputPath: String, outputPath: String): Int
+  private external fun nativeConvertWavToMp3(inputPath: String, outputPath: String, bitrate: Int?, quality: Int?): Int
 
   companion object {
     const val NAME = "WavToMp3"

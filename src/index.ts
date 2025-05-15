@@ -137,6 +137,21 @@ class WavToMp3Converter {
     outputPath: string,
     options?: WavToMp3Options
   ): Promise<string> {
+    // Validate options
+    if (options) {
+      if (options.bitrate !== undefined && options.quality !== undefined) {
+        throw new Error('Cannot specify both bitrate and quality. Please use either bitrate or quality, not both.');
+      }
+
+      if (options.bitrate !== undefined && (options.bitrate < 32 || options.bitrate > 320)) {
+        throw new Error('Bitrate must be between 32 and 320 kbps');
+      }
+
+      if (options.quality !== undefined && (options.quality < 0 || options.quality > 9)) {
+        throw new Error('Quality must be between 0 (best) and 9 (worst)');
+      }
+    }
+
     return this.nativeModule.convertWavToMp3(inputPath, outputPath, options);
   }
 }

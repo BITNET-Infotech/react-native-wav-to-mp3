@@ -24,6 +24,11 @@ int lame_close(lame_global_flags* gfp);
 
 // VBR modes
 #define vbr_off 0
+#define vbr_mt 1
+#define vbr_rh 2
+#define vbr_abr 3
+#define vbr_mtrh 4
+#define vbr_default vbr_mtrh
 
 #ifdef __cplusplus
 }

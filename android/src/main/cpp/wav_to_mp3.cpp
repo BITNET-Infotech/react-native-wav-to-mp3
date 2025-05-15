@@ -24,7 +24,9 @@ Java_com_wavtomp3_WavToMp3Module_nativeConvertWavToMp3(
         JNIEnv *env,
         jobject /* this */,
         jstring inputPath,
-        jstring outputPath) {
+        jstring outputPath,
+        jint bitrate,
+        jint quality) {
     
     const char *input = env->GetStringUTFChars(inputPath, nullptr);
     const char *output = env->GetStringUTFChars(outputPath, nullptr);
@@ -91,9 +93,25 @@ Java_com_wavtomp3_WavToMp3Module_nativeConvertWavToMp3(
     
     lame_set_num_channels(gfp, channels);
     lame_set_in_samplerate(gfp, sampleRate);
-    lame_set_brate(gfp, 128); // 128kbps
-    lame_set_quality(gfp, 5); // 0=best, 9=worst
-    lame_set_VBR(gfp, vbr_off);
+    
+    // Set encoding parameters based on provided options
+    if (bitrate > 0) {
+        // If bitrate is provided, use it and disable VBR
+        LOGI("Using bitrate: %d kbps", bitrate);
+        lame_set_brate(gfp, bitrate);
+        lame_set_VBR(gfp, vbr_off);
+    } else if (quality >= 0 && quality <= 9) {
+        // If quality is provided, use it and enable VBR
+        LOGI("Using quality: %d (0=best, 9=worst)", quality);
+        lame_set_quality(gfp, quality);
+        lame_set_VBR(gfp, vbr_default);
+    } else {
+        // Default settings if no options provided
+        LOGI("Using default settings: bitrate=128kbps, quality=5");
+        lame_set_brate(gfp, 128);
+        lame_set_quality(gfp, 5);
+        lame_set_VBR(gfp, vbr_off);
+    }
     
     if (lame_init_params(gfp) < 0) {
         LOGE("Failed to initialize LAME parameters");
