@@ -139,9 +139,6 @@ class WavToMp3Converter {
   ): Promise<string> {
     // Validate options
     if (options) {
-      if (options.bitrate !== undefined && options.quality !== undefined) {
-        throw new Error('Cannot specify both bitrate and quality. Please use either bitrate or quality, not both.');
-      }
 
       if (options.bitrate !== undefined && (options.bitrate < 32 || options.bitrate > 320)) {
         throw new Error('Bitrate must be between 32 and 320 kbps');
