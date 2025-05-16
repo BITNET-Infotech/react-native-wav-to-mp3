@@ -57,8 +57,8 @@ class WavToMp3Module(reactContext: ReactApplicationContext) :
       Log.d(TAG, "Output path: $processedOutputPath")
       
       // Get options with defaults
-      val bitrate = options?.getInt("bitrate")
-      val quality = options?.getInt("quality")
+      val bitrate = options?.getInt("bitrate") ?: -1
+      val quality = options?.getInt("quality") ?: -1
       
       val result = nativeConvertWavToMp3(processedInputPath, processedOutputPath, bitrate, quality)
       

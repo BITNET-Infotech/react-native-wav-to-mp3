@@ -95,7 +95,7 @@ Java_com_wavtomp3_WavToMp3Module_nativeConvertWavToMp3(
     lame_set_in_samplerate(gfp, sampleRate);
     
     // Set encoding parameters based on provided options
-    if (bitrate > 0) {
+    if (bitrate != -1) {
         // If bitrate is provided, use it and disable VBR
         LOGI("Using bitrate: %d kbps", bitrate);
         lame_set_brate(gfp, bitrate);
@@ -105,7 +105,7 @@ Java_com_wavtomp3_WavToMp3Module_nativeConvertWavToMp3(
         lame_set_brate(gfp, 128);
     }
  
-    if (quality >= 0 && quality <= 9) {
+    if (quality != -1) {
         // If quality is provided, use it and enable VBR
         LOGI("Using quality: %d (0=best, 9=worst)", quality);
         lame_set_quality(gfp, quality);
