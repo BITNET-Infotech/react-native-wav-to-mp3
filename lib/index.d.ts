@@ -88,6 +88,40 @@ declare class WavToMp3Converter {
      * ```
      */
     convert(inputPath: string, outputPath: string, options?: WavToMp3Options): Promise<string>;
+    /**
+     * Convert an AAC file to MP3 format (Android only)
+     * @param inputPath Path to the input AAC file (can be file:// URI)
+     * @param outputPath Path where the output MP3 file should be saved (can be file:// URI)
+     * @param options Optional conversion settings
+     * @returns Promise that resolves with the output file path when conversion is complete
+     *
+     * @example
+     * ```typescript
+     * const converter = new WavToMp3Converter();
+     *
+     * // Add progress listener
+     * const subscription = converter.events.addProgressListener((progress) => {
+     *   console.log(`Converting: ${(progress.progress * 100).toFixed(1)}%`);
+     * });
+     *
+     * try {
+     *   const outputPath = await converter.convertAac(
+     *     'file:///input.aac',
+     *     'file:///output.mp3',
+     *     {
+     *       bitrate: 192,  // 192kbps
+     *       quality: 2     // High quality
+     *     }
+     *   );
+     *   console.log('Conversion successful:', outputPath);
+     * } catch (error) {
+     *   console.error('Conversion failed:', error);
+     * } finally {
+     *   subscription.remove();
+     * }
+     * ```
+     */
+    convertAac(inputPath: string, outputPath: string, options?: WavToMp3Options): Promise<string>;
 }
 export declare const wavToMp3: WavToMp3Converter;
 export { WavToMp3Converter };

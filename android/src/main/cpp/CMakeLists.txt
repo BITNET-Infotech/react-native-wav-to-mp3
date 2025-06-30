@@ -25,4 +25,5 @@ target_include_directories(wav-to-mp3 PRIVATE
 target_link_libraries(wav-to-mp3
     lame
     android
-    log) 
+    log
+    mediandk) 

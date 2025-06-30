@@ -23,16 +23,34 @@ class WavToMp3Module(reactContext: ReactApplicationContext) :
 
   @ReactMethod
   fun convertWavToMp3(inputPath: String, outputPath: String, options: ReadableMap?, promise: Promise) {
+    convertAudioToMp3(inputPath, outputPath, "wav", options, promise)
+  }
+
+  @ReactMethod
+  fun convertAacToMp3(inputPath: String, outputPath: String, options: ReadableMap?, promise: Promise) {
+    convertAudioToMp3(inputPath, outputPath, "aac", options, promise)
+  }
+
+  @ReactMethod
+  fun convertAudioToMp3(inputPath: String, outputPath: String, inputFormat: String, options: ReadableMap?, promise: Promise) {
     try {
-      // Remove file:// prefix if present
+      // Remove file:// prefix if present and clean up path
       var processedInputPath = inputPath
       var processedOutputPath = outputPath
       
       if (inputPath.startsWith("file://")) {
         processedInputPath = inputPath.substring(7)
+        // Remove any leading double slashes
+        if (processedInputPath.startsWith("//")) {
+          processedInputPath = processedInputPath.substring(1)
+        }
       }
       if (outputPath.startsWith("file://")) {
         processedOutputPath = outputPath.substring(7)
+        // Remove any leading double slashes
+        if (processedOutputPath.startsWith("//")) {
+          processedOutputPath = processedOutputPath.substring(1)
+        }
       }
       
       // Ensure output directory exists
@@ -49,6 +67,7 @@ class WavToMp3Module(reactContext: ReactApplicationContext) :
       // Log file paths and sizes
       val inputFile = File(processedInputPath)
       Log.d(TAG, "Input path: $processedInputPath")
+      Log.d(TAG, "Input format: $inputFormat")
       Log.d(TAG, "Input file exists: ${inputFile.exists()}")
       if (inputFile.exists()) {
         Log.d(TAG, "Input file size: ${inputFile.length()} bytes")
@@ -60,7 +79,7 @@ class WavToMp3Module(reactContext: ReactApplicationContext) :
       val bitrate = options?.getInt("bitrate") ?: -1
       val quality = options?.getInt("quality") ?: -1
       
-      val result = nativeConvertWavToMp3(processedInputPath, processedOutputPath, bitrate, quality)
+      val result = nativeConvertAudioToMp3(processedInputPath, processedOutputPath, inputFormat, bitrate, quality)
       
       // Log output file size after conversion
       val resultFile = File(processedOutputPath)
@@ -72,7 +91,7 @@ class WavToMp3Module(reactContext: ReactApplicationContext) :
       if (result == 0) {
         promise.resolve(processedOutputPath)
       } else {
-        promise.reject("CONVERSION_ERROR", "Failed to convert audio file")
+        promise.reject("CONVERSION_ERROR", "Failed to convert audio file from $inputFormat to MP3")
       }
     } catch (e: Exception) {
       promise.reject("CONVERSION_ERROR", e.message)
@@ -80,6 +99,7 @@ class WavToMp3Module(reactContext: ReactApplicationContext) :
   }
 
   private external fun nativeConvertWavToMp3(inputPath: String, outputPath: String, bitrate: Int?, quality: Int?): Int
+  private external fun nativeConvertAudioToMp3(inputPath: String, outputPath: String, inputFormat: String, bitrate: Int?, quality: Int?): Int
 
   companion object {
     const val NAME = "WavToMp3"
