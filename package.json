@@ -1,6 +1,6 @@
 {
   "name": "@bitnet-infotech/react-native-wav-to-mp3",
-  "version": "2.0.6",
+  "version": "2.0.8",
   "description": "A React Native library for converting WAV files to MP3 format using LAME encoder",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",

@@ -64,14 +64,125 @@ RCT_EXPORT_METHOD(convertWavToMp3:(NSString *)inputPath
     int sampleRate;
     short bitsPerSample;
     
-    fseek(wav, 22, SEEK_SET);
+    // Read RIFF header
+    char riffHeader[4];
+    fread(riffHeader, 1, 4, wav);
+    if (strncmp(riffHeader, "RIFF", 4) != 0) {
+        fclose(wav);
+        fclose(mp3);
+        reject(@"WAV_ERROR", @"Not a valid WAV file (missing RIFF header)", nil);
+        return;
+    }
+    
+    // Skip file size
+    fseek(wav, 4, SEEK_CUR);
+    
+    // Read WAVE identifier
+    char waveHeader[4];
+    fread(waveHeader, 1, 4, wav);
+    if (strncmp(waveHeader, "WAVE", 4) != 0) {
+        fclose(wav);
+        fclose(mp3);
+        reject(@"WAV_ERROR", @"Not a valid WAV file (missing WAVE identifier)", nil);
+        return;
+    }
+    
+    // Search for fmt chunk
+    char chunkId[4];
+    unsigned int chunkSize;
+    bool fmtFound = false;
+    
+    while (!fmtFound && !feof(wav)) {
+        if (fread(chunkId, 1, 4, wav) != 4) {
+            break;
+        }
+        
+        if (fread(&chunkSize, 4, 1, wav) != 1) {
+            break;
+        }
+        
+        if (strncmp(chunkId, "fmt ", 4) == 0) {
+            fmtFound = true;
+            break;
+        } else {
+            // Skip this chunk
+            fseek(wav, chunkSize, SEEK_CUR);
+        }
+    }
+    
+    if (!fmtFound) {
+        fclose(wav);
+        fclose(mp3);
+        reject(@"WAV_ERROR", @"fmt chunk not found in WAV file", nil);
+        return;
+    }
+    
+    // Read fmt chunk data
+    short audioFormat;
+    fread(&audioFormat, sizeof(short), 1, wav);
     fread(&channels, sizeof(short), 1, wav);
     fread(&sampleRate, sizeof(int), 1, wav);
-    fseek(wav, 34, SEEK_SET);
+    
+    int byteRate;
+    short blockAlign;
+    fread(&byteRate, sizeof(int), 1, wav);
+    fread(&blockAlign, sizeof(short), 1, wav);
     fread(&bitsPerSample, sizeof(short), 1, wav);
     
-    RCTLogInfo(@"WAV file info: channels=%d, sampleRate=%d, bitsPerSample=%d", 
-               channels, sampleRate, bitsPerSample);
+    // Skip any remaining fmt chunk data
+    if (chunkSize > 16) {
+        fseek(wav, chunkSize - 16, SEEK_CUR);
+    }
+    
+    // Search for data chunk
+    bool dataFound = false;
+    while (!dataFound && !feof(wav)) {
+        if (fread(chunkId, 1, 4, wav) != 4) {
+            break;
+        }
+        
+        if (fread(&chunkSize, 4, 1, wav) != 1) {
+            break;
+        }
+        
+        if (strncmp(chunkId, "data", 4) == 0) {
+            dataFound = true;
+            break;
+        } else {
+            // Skip this chunk
+            fseek(wav, chunkSize, SEEK_CUR);
+        }
+    }
+    
+    if (!dataFound) {
+        fclose(wav);
+        fclose(mp3);
+        reject(@"WAV_ERROR", @"data chunk not found in WAV file", nil);
+        return;
+    }
+    
+    // Now we're positioned at the start of audio data
+    long dataStartPosition = ftell(wav);
+    
+    RCTLogInfo(@"WAV file info: channels=%d, sampleRate=%d, bitsPerSample=%d, audioFormat=%d", 
+               channels, sampleRate, bitsPerSample, audioFormat);
+    RCTLogInfo(@"Data chunk size: %u bytes", chunkSize);
+    RCTLogInfo(@"Data starts at position: %ld", dataStartPosition);
+    
+    // Validate audio format
+    if (audioFormat != 1) {
+        fclose(wav);
+        fclose(mp3);
+        reject(@"WAV_ERROR", @"Unsupported audio format (only PCM supported)", nil);
+        return;
+    }
+    
+    if (bitsPerSample != 16) {
+        fclose(wav);
+        fclose(mp3);
+        reject(@"WAV_ERROR", @"Unsupported bit depth (only 16-bit supported)", nil);
+        return;
+    }
     
     // Initialize LAME
     lame_global_flags *gfp = lame_init();
@@ -91,23 +202,54 @@ RCT_EXPORT_METHOD(convertWavToMp3:(NSString *)inputPath
             lame_set_brate(gfp, [bitrate intValue]);
             RCTLogInfo(@"Setting bitrate to: %d", [bitrate intValue]);
         } else {
-            lame_set_brate(gfp, 128); // Default 128kbps
+            lame_set_brate(gfp, 32); // Default 32kbps for maximum compression
         }
         
         if (quality) {
             lame_set_quality(gfp, [quality intValue]);
             RCTLogInfo(@"Setting quality to: %d", [quality intValue]);
         } else {
-            lame_set_quality(gfp, 5); // Default quality
+            lame_set_quality(gfp, 7); // Default quality 7 (good compression, acceptable for speech)
         }
     } else {
-        lame_set_brate(gfp, 128); // 128kbps
-        lame_set_quality(gfp, 5); // 0=best, 9=worst
+        lame_set_brate(gfp, 32); // 32kbps for maximum compression
+        lame_set_quality(gfp, 7); // 0=best, 9=worst - 7 is good for speech
     }
     
     lame_set_num_channels(gfp, channels);
     lame_set_in_samplerate(gfp, sampleRate);
     lame_set_VBR(gfp, vbr_off);
+    
+    // Set additional parameters optimized for maximum compression and speech recognition
+    lame_set_compression_ratio(gfp, 11.025); // Good compression ratio
+    lame_set_force_ms(gfp, 0); // Don't force mid/side encoding
+    
+    // Audio quality improvements - preserve original volume
+    lame_set_scale(gfp, 1.0); // Preserve original volume
+    lame_set_scale_left(gfp, 1.0); // Left channel scaling
+    lame_set_scale_right(gfp, 1.0); // Right channel scaling
+    
+    // Speech optimization settings for maximum compression
+    lame_set_lowpassfreq(gfp, 8000); // Low-pass filter at 8kHz (speech frequencies)
+    lame_set_highpassfreq(gfp, 80); // High-pass filter at 80Hz (remove low noise)
+    lame_set_strict_ISO(gfp, 0); // Don't strictly follow ISO (allows better compression)
+    lame_set_ATHonly(gfp, 0); // Use full psychoacoustic model
+    lame_set_ATHshort(gfp, 0); // Use long blocks for better compression
+    lame_set_noATH(gfp, 0); // Use ATH (Absolute Threshold of Hearing)
+    lame_set_quant_comp(gfp, 0); // No quantization compensation
+    lame_set_quant_comp_short(gfp, 0); // No short block quantization compensation
+    
+    // Better encoding settings
+    lame_set_emphasis(gfp, 0); // No emphasis
+    lame_set_original(gfp, 1); // Mark as original
+    lame_set_copyright(gfp, 0); // No copyright bit
+    lame_set_extension(gfp, 0); // No extension
+    
+    // Speech-specific optimizations
+    if (sampleRate > 16000) {
+        // For higher sample rates, we can be more aggressive with compression
+        lame_set_lowpassfreq(gfp, 8000); // Focus on speech frequencies
+    }
     
     if (lame_init_params(gfp) < 0) {
         lame_close(gfp);
@@ -132,21 +274,26 @@ RCT_EXPORT_METHOD(convertWavToMp3:(NSString *)inputPath
         return;
     }
     
-    // Skip WAV header
-    fseek(wav, 44, SEEK_SET);
+    // Position at the start of audio data (we already found this position)
+    fseek(wav, dataStartPosition, SEEK_SET);
     
     int bytesRead;
     int bytesWritten;
     long totalBytesWritten = 0;
     long totalBytes = [inputAttributes fileSize];
-    long bytesProcessed = 44; // Start after header
+    long bytesProcessed = dataStartPosition; // Start from where data begins
     
     // Convert
     while ((bytesRead = fread(buffer, sizeof(short), bufferSize * channels, wav)) > 0) {
+        int samplesRead = bytesRead / channels;
+        
+        // Ensure we have complete samples
+        if (samplesRead <= 0) continue;
+        
         if (channels == 1) {
-            bytesWritten = lame_encode_buffer(gfp, buffer, NULL, bytesRead, mp3Buffer, bufferSize * 2);
+            bytesWritten = lame_encode_buffer(gfp, buffer, NULL, samplesRead, mp3Buffer, bufferSize * 2);
         } else {
-            bytesWritten = lame_encode_buffer_interleaved(gfp, buffer, bytesRead / channels, mp3Buffer, bufferSize * 2);
+            bytesWritten = lame_encode_buffer_interleaved(gfp, buffer, samplesRead, mp3Buffer, bufferSize * 2);
         }
         
         if (bytesWritten < 0) {
